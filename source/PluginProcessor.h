@@ -10,14 +10,13 @@
 // =============================================================================
 //  TEAL 1176 -- FET feedback compressor / limiter (1176 model)
 //
-//  Architecture (see source/dsp and the README "one-page build recipe"):
 //    base rate : capture dry, apply smoothed input drive
 //    OS rate   : nonlinear engine (input iron -> FET divider -> FET shaper ->
-//                output iron -> DC block), feedback detection with retained
-//                ripple, zero added audio latency (feedback => no lookahead)
-//    base rate : apply smoothed make-up + dry/wet mix
+//                output iron), feedback (or external feedforward) detection
+//    base rate : make-up + dry/wet mix + click-free soft bypass
 //
-//  Oversampling uses min-phase polyphase-IIR halfband filters for ~zero latency.
+//  Oversampling: 1x-8x, selectable low-latency IIR or linear-phase FIR.
+//  Optional stereo-link, sidechain high-pass, and external sidechain input.
 // =============================================================================
 
 class TEAL1176AudioProcessor : public juce::AudioProcessor
@@ -40,10 +39,10 @@ public:
     bool isMidiEffect() const override                     { return false; }
     double getTailLengthSeconds() const override           { return 0.0; }
 
-    int getNumPrograms() override                          { return 1; }
-    int getCurrentProgram() override                       { return 0; }
-    void setCurrentProgram (int) override                  {}
-    const juce::String getProgramName (int) override       { return {}; }
+    int getNumPrograms() override;
+    int getCurrentProgram() override;
+    void setCurrentProgram (int) override;
+    const juce::String getProgramName (int) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -57,28 +56,37 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    // Run the engine over a block at whatever rate the block is in.
-    void processEngine (juce::dsp::AudioBlock<float>& block);
+    void processEngine (juce::dsp::AudioBlock<float>& block,
+                        const float* sc0, const float* sc1, int scNumCh, int factor);
+    void applyProgram (int index);
+
+    using OS = juce::dsp::Oversampling<float>;
 
     teal::CompressorEngine engine;
     juce::AudioBuffer<float> dryBuffer;
 
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> inputGain, outputGain, mixAmount;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> inputGain, outputGain, mixAmount, bypassRamp;
 
-    std::unique_ptr<juce::dsp::Oversampling<float>> os2, os4, os8;
+    std::unique_ptr<OS> os2,  os4,  os8;     // low-latency IIR
+    std::unique_ptr<OS> os2f, os4f, os8f;    // linear-phase FIR
     double baseSampleRate { 48000.0 };
-    int    lastOsChoice   { -1 };
+    int    lastOsKey      { -1 };            // encodes (osChoice, quality) for latency updates
     int    lastRatioMode  { -1 };
+    int    currentProgram { 0 };
+    float  lastBlockGr     { 0.0f };
 
-    // Cached atomic parameter pointers (read once per block).
-    std::atomic<float>* pInput   { nullptr };
-    std::atomic<float>* pOutput  { nullptr };
-    std::atomic<float>* pAttack  { nullptr };
-    std::atomic<float>* pRelease { nullptr };
-    std::atomic<float>* pRatio   { nullptr };
-    std::atomic<float>* pMix     { nullptr };
-    std::atomic<float>* pOs      { nullptr };
-    std::atomic<float>* pBypass  { nullptr };
+    std::atomic<float>* pInput    { nullptr };
+    std::atomic<float>* pOutput   { nullptr };
+    std::atomic<float>* pAttack   { nullptr };
+    std::atomic<float>* pRelease  { nullptr };
+    std::atomic<float>* pRatio    { nullptr };
+    std::atomic<float>* pMix      { nullptr };
+    std::atomic<float>* pOs       { nullptr };
+    std::atomic<float>* pOsQ      { nullptr };
+    std::atomic<float>* pScHpf    { nullptr };
+    std::atomic<float>* pLink     { nullptr };
+    std::atomic<float>* pExtSc    { nullptr };
+    std::atomic<float>* pBypass   { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TEAL1176AudioProcessor)
 };

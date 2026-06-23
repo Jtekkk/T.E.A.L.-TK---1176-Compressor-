@@ -7,25 +7,19 @@
 //
 //     x -> [input iron] -> [ * g ] -> [FET nonlinearity] -> [output iron] -> [DC] -> y
 //                             ^
-//                             |  g from the feedback loop
-//                             |
-//     detector tap:  x * g  (the LINEAR gain-reduced signal, previous sample)
+//                             |  g from the feedback loop (or feedforward, ext SC)
 //
-//  * Input drive and output make-up are applied OUTSIDE the engine, at base
-//    rate, by the plugin processor (they are linear and commute with the
-//    oversampling, which keeps the costly nonlinear core lean and the gain
-//    stages zipper-free). Make-up sits after the whole chain, like the 1176
-//    Output pot, so it does not affect detection.
-//  * Detection feeds back from the LINEAR gain-reduced signal (x*g) rather than
-//    the saturated audio, so gain reduction scales properly with input drive
-//    (sensing the post-saturation audio would let the iron's ceiling clamp the
-//    control loop and cap GR). This is the behavioural split the README
-//    recommends: model "how much GR" and "how much grit" separately. The
-//    program-dependent ratio creep and LF grit still emerge from the retained
-//    detector ripple and the signal-dependent multiply; the drive-dependent
-//    grit comes from the input iron saturating harder as you push Input.
-//  * Detection is stereo-LINKED (max across channels), so the stereo image
-//    does not wander -- the hardware does this with the 1176SA link.
+//     detector tap:  sidechain-HPF( x * g )   (the LINEAR gain-reduced signal)
+//
+//  Notes:
+//  * Input drive / output make-up / mix are applied OUTSIDE the engine (base
+//    rate) by the processor; make-up sits after the chain like the Output pot.
+//  * Detection feeds back from the LINEAR gain-reduced signal so GR scales with
+//    drive (see git history / README behavioural split). With an external
+//    sidechain it instead reads that signal feedforward.
+//  * Stereo detection can be linked (max across channels, shared gain) or
+//    independent per channel.
+//  * A sidechain high-pass keeps low frequencies from driving the compressor.
 //  * The biased-tanh stages add the even-harmonic "iron + FET" colour.
 // =============================================================================
 
@@ -34,6 +28,7 @@
 
 #include "ADAAShaper.h"
 #include "FETGainComputer.h"
+#include "Filters.h"
 
 namespace teal
 {
@@ -45,59 +40,77 @@ struct CompressorEngine
 {
     static constexpr int kMaxCh = 2;
 
-    FETGainComputer gr;
+    FETGainComputer gr      [kMaxCh];   // one per channel (used when unlinked)
     BiasedTanh      inIron  [kMaxCh];
     BiasedTanh      fet     [kMaxCh];
     BiasedTanh      outIron [kMaxCh];
     DCBlocker       dcb     [kMaxCh];
-    double          prevDet [kMaxCh] { 0.0, 0.0 };   // previous linear gain-reduced sample
-    int             numCh { 2 };
+    SvfHP           scHpf   [kMaxCh];
+    double          prevDet [kMaxCh] { 0.0, 0.0 };
+    int             numCh   { 2 };
+    bool            linked  { true };
+    double          scHpfHz { 20.0 };
 
     // -------------------------------------------------------------------------
     void prepare (double fs, int channels) noexcept
     {
         numCh = std::max (1, std::min (channels, kMaxCh));
-        gr.prepare (fs);
         for (int c = 0; c < kMaxCh; ++c)
         {
-            // Low drive + high asymmetry => even-harmonic dominant ("warm"),
-            // because for a biased tanh  H2/H3 ~ tanh(bias)/(drive*level).
-            inIron [c].set (0.60, 0.22);   inIron [c].reset();   // input transformer
-            fet    [c].set (0.85, 0.40);   fet    [c].reset();   // FET even-harmonic core (set per ratio)
-            outIron[c].set (0.70, 0.26);   outIron[c].reset();   // output iron + Class A
+            gr[c].prepare (fs);
+            inIron [c].set (0.60, 0.22);   inIron [c].reset();
+            fet    [c].set (0.85, 0.40);   fet    [c].reset();
+            outIron[c].set (0.70, 0.26);   outIron[c].reset();
             dcb    [c].prepare (fs);
+            scHpf  [c].setSampleRate (fs); scHpf[c].setCutoff (scHpfHz); scHpf[c].reset();
             prevDet[c] = 0.0;
         }
         setRatioMode (Ratio::R4);
     }
 
-    // Recompute rate-dependent coefficients (oversampling change) without
-    // clearing running state.
     void setSampleRate (double fs) noexcept
     {
-        gr.setSampleRate (fs);
         for (int c = 0; c < kMaxCh; ++c)
+        {
+            gr[c].setSampleRate (fs);
             dcb[c].setSampleRate (fs);
+            scHpf[c].setSampleRate (fs);
+        }
     }
 
     void reset() noexcept
     {
-        gr.reset();
         for (int c = 0; c < kMaxCh; ++c)
         {
+            gr[c].reset();
             inIron[c].reset();
             fet[c].reset();
             outIron[c].reset();
             dcb[c].reset();
+            scHpf[c].reset();
             prevDet[c] = 0.0;
         }
     }
 
-    void setTimes (double attSec, double relSec) noexcept { gr.setTimes (attSec, relSec); }
+    void setTimes (double attSec, double relSec) noexcept
+    {
+        for (int c = 0; c < kMaxCh; ++c) gr[c].setTimes (attSec, relSec);
+    }
 
-    // ratio -> { loop gain k = R-1, threshold, FET drive/bias }.
-    // Higher ratios raise the threshold; "All" drops in a parallel bias network
-    // landing ~12-20:1 with shifted bias points => extra grind (README §6.2).
+    void setLinked (bool shouldLink) noexcept { linked = shouldLink; }
+
+    void setSidechainHpf (double hz) noexcept
+    {
+        scHpfHz = hz;
+        for (int c = 0; c < kMaxCh; ++c) scHpf[c].setCutoff (hz);
+    }
+
+    // Feedback (internal) vs feedforward (external sidechain) detection law.
+    void setExternalSidechain (bool external) noexcept
+    {
+        for (int c = 0; c < kMaxCh; ++c) gr[c].feedforward = external;
+    }
+
     void setRatioMode (Ratio r) noexcept
     {
         double k = 3.0, thr = -18.0, drive = 0.85, bias = 0.40;
@@ -110,41 +123,62 @@ struct CompressorEngine
             // All-buttons: more drive => grittier, more odd content + grind.
             case Ratio::All: k = 17.0; thr = -15.0; drive = 1.80; bias = 0.40; break;
         }
-        gr.setRatio (k, thr);
         for (int c = 0; c < kMaxCh; ++c)
+        {
+            gr[c].setRatio (k, thr);
             fet[c].set (drive, bias);
+        }
     }
 
-    double getGainReductionDb() const noexcept { return gr.lastGrDb; }
+    // Most negative (largest) reduction across channels, for metering.
+    double getGainReductionDb() const noexcept
+    {
+        return std::min (gr[0].lastGrDb, gr[1].lastGrDb);
+    }
 
-    // Process one frame in place. x points to `nCh` samples (interleaved by
-    // pointer arg, i.e. x[0], x[1]). Input drive / make-up / mix are handled
-    // by the caller. Returns nothing; x is overwritten with the wet signal.
-    inline void processFrame (double* x, int nCh) noexcept
+    // Process one frame in place. `x` holds nCh samples. If `sc` is non-null it
+    // is the external sidechain frame (scCh samples) used for feedforward
+    // detection; otherwise detection is the internal feedback path.
+    inline void processFrame (double* x, int nCh,
+                              const double* sc = nullptr, int scCh = 0) noexcept
     {
         const int c = std::min (nCh, numCh);
 
-        // Stereo-linked feedback detector: max |previous gain-reduced sample|.
-        double det = 0.0;
-        for (int j = 0; j < c; ++j)
+        double dsig[2] = { 0.0, 0.0 };
+        if (sc != nullptr && scCh > 0)
+            for (int j = 0; j < c; ++j)
+                dsig[j] = scHpf[j].process (sc[j < scCh ? j : scCh - 1]);
+        else
+            for (int j = 0; j < c; ++j)
+                dsig[j] = scHpf[j].process (prevDet[j]);
+
+        double gain[2] = { 1.0, 1.0 };
+        if (linked)
         {
-            const double m = std::abs (prevDet[j]);
-            if (m > det) det = m;
+            double det = 0.0;
+            for (int j = 0; j < c; ++j) det = std::max (det, std::abs (dsig[j]));
+            const double g = gr[0].process (det);
+            gr[1].lastGrDb = gr[0].lastGrDb;     // keep meter consistent
+            gain[0] = gain[1] = g;
+        }
+        else
+        {
+            gain[0] = gr[0].process (std::abs (dsig[0]));
+            if (c > 1) gain[1] = gr[1].process (std::abs (dsig[1]));
+            else       gr[1].lastGrDb = gr[0].lastGrDb;
         }
 
-        const double g = gr.process (det);
-
         for (int j = 0; j < c; ++j)
         {
-            const double in = x[j];                           // drive already applied by caller
-            prevDet[j]      = in * g;                          // feedback tap: linear GR'd signal
+            const double in = x[j];
+            prevDet[j]      = in * gain[j];                   // feedback tap (linear GR'd)
 
-            const double a      = inIron[j].process (in);     // input transformer (drive colour)
-            double       postGR = a * g;                      // FET divider attenuation
-            postGR              = fet[j].process (postGR);    // FET nonlinearity (even harmonics)
+            const double a      = inIron[j].process (in);
+            double       postGR = a * gain[j];
+            postGR              = fet[j].process (postGR);
 
-            double y = outIron[j].process (postGR);           // output iron + Class A
-            y        = dcb[j].process (y);                    // remove residual DC
+            double y = outIron[j].process (postGR);
+            y        = dcb[j].process (y);
             x[j]     = y;
         }
     }

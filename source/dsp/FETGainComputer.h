@@ -37,6 +37,7 @@ struct FETGainComputer
     double thresholdDb { -18.0 };
     double k           { 3.0 };       // ratio - 1  (4:1 -> 3)
     double kneeDb      { 6.0 };
+    bool   feedforward { false };     // false: internal feedback; true: external SC
 
     // --- state ---------------------------------------------------------------
     double env      { 0.0 };          // linear envelope of the rectified detector
@@ -95,11 +96,14 @@ struct FETGainComputer
         const double envDb = 20.0 * std::log10 (std::max (1.0e-9, env));
         const double over  = softOver (envDb - thresholdDb, kneeDb);
 
-        // Control law is G = -k * over. Because the detector senses the
-        // gain-reduced (post-GR) signal, the closed loop turns this into a
-        // steady-state slope of 1/(1+k), i.e. ratio R = 1+k (README §B.1).
-        // (Do NOT pre-divide by (1+k) here -- the feedback already does it.)
-        const double grDb = -k * over;
+        // Internal (feedback) detection: control law G = -k * over. Because the
+        // detector senses the gain-reduced (post-GR) signal, the closed loop
+        // turns this into a steady-state slope of 1/(1+k), i.e. ratio R = 1+k
+        // (README §B.1) -- do NOT pre-divide here, the feedback does it.
+        // External sidechain is feedforward (no loop), so pre-divide to keep the
+        // same ratio R = 1+k.
+        const double grDb = feedforward ? -(k / (1.0 + k)) * over
+                                        : -k * over;
 
         lastGrDb = grDb;
         return std::pow (10.0, grDb * 0.05);

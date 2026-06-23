@@ -105,14 +105,62 @@ int main()
         }
     }
 
-    // Bypass should pass audio through unity-ish.
+    // Stereo-link off + sidechain HPF: must stay finite/non-silent.
+    setParam (*p, "os", 2.0f / 3.0f);   // 4x
+    setParam (*p, "ratio", 0.0f);
+    setParam (*p, "link", 0.0f);
+    {
+        auto st = runSeconds (*p, fs, block, 0.25, 0.5f);
+        const bool pass = st.finite && st.peak > 1.0e-4f && st.peak < 16.0f;
+        ok = ok && pass;
+        std::printf ("  link OFF        -> peak %.3f finite=%d  %s\n", st.peak, (int) st.finite, pass ? "ok" : "FAIL");
+    }
+    setParam (*p, "link", 1.0f);
+    setParam (*p, "schpf", 0.6f);       // high-passed sidechain
+    {
+        auto st = runSeconds (*p, fs, block, 0.25, 0.5f);
+        const bool pass = st.finite && st.peak > 1.0e-4f && st.peak < 16.0f;
+        ok = ok && pass;
+        std::printf ("  SC-HPF on       -> peak %.3f finite=%d  %s\n", st.peak, (int) st.finite, pass ? "ok" : "FAIL");
+    }
+    setParam (*p, "schpf", 0.0f);
+
+    // Linear-phase oversampling across factors.
+    setParam (*p, "osq", 1.0f);
+    for (int o = 1; o < 4; ++o)
+    {
+        setParam (*p, "os", osNorms[o]);
+        auto st = runSeconds (*p, fs, block, 0.2, 0.5f);
+        const bool pass = st.finite && st.peak > 1.0e-4f && st.peak < 16.0f;
+        ok = ok && pass;
+        std::printf ("  OS %-3s linear   -> peak %.3f finite=%d  %s\n", osNames[o], st.peak, (int) st.finite, pass ? "ok" : "FAIL");
+    }
+    setParam (*p, "osq", 0.0f);
     setParam (*p, "os", 0.0f);
+
+    // Presets: each program should apply and produce finite audio.
+    {
+        const int nProg = p->getNumPrograms();
+        bool presetsOk = true;
+        for (int i = 0; i < nProg; ++i)
+        {
+            p->setCurrentProgram (i);
+            auto st = runSeconds (*p, fs, block, 0.1, 0.5f);
+            if (! (st.finite && st.peak > 1.0e-4f)) presetsOk = false;
+        }
+        ok = ok && presetsOk;
+        std::printf ("  %d presets       -> %s\n", nProg, presetsOk ? "ok" : "FAIL");
+    }
+
+    // Soft bypass: after the crossfade settles, output == dry input (~0.5).
+    setParam (*p, "input", 0.85f);
     setParam (*p, "bypass", 1.0f);
+    runSeconds (*p, fs, block, 0.1, 0.5f);          // let the ramp settle
     {
         auto st = runSeconds (*p, fs, block, 0.1, 0.5f);
-        const bool pass = st.finite && std::abs (st.peak - 0.5f) < 0.05f;
+        const bool pass = st.finite && std::abs (st.peak - 0.5f) < 0.02f;
         ok = ok && pass;
-        std::printf ("  bypass -> peak %.3f (expect ~0.5)  %s\n", st.peak, pass ? "ok" : "FAIL");
+        std::printf ("  soft bypass     -> peak %.3f (expect ~0.5)  %s\n", st.peak, pass ? "ok" : "FAIL");
     }
     setParam (*p, "bypass", 0.0f);
 
