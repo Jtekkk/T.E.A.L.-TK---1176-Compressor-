@@ -77,4 +77,13 @@ if(TEAL1176_BUILD_TESTS)
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_recommended_config_flags)
+
+    # Renders the editor to a PNG (run under a virtual display, e.g. xvfb-run).
+    add_executable(editor_snapshot tests/editor_snapshot.cpp)
+    target_include_directories(editor_snapshot PRIVATE source)
+    target_link_libraries(editor_snapshot PRIVATE
+        TEAL1176
+        juce::juce_audio_utils
+        juce::juce_dsp
+        juce::juce_recommended_config_flags)
 endif()
