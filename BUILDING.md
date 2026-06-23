@@ -1,6 +1,6 @@
-# Building TEAL 1178
+# Building TEAL 1176
 
-**TEAL 1178** is a FET feedback compressor / limiter (a 1176-style model) built
+**TEAL 1176** is a FET feedback compressor / limiter (a 1176-style model) built
 with [JUCE](https://juce.com) and CMake. The DSP is derived directly from the
 research and "one-page build recipe" in [`README.md`](README.md).
 
@@ -37,8 +37,8 @@ The first configure clones JUCE and can take a couple of minutes.
 ### Artifacts
 
 ```
-build/TEAL1178_artefacts/Release/VST3/TEAL 1178.vst3      # VST3 plugin
-build/TEAL1178_artefacts/Release/Standalone/TEAL 1178     # standalone app
+build/TEAL1176_artefacts/Release/VST3/TEAL 1176.vst3      # VST3 plugin
+build/TEAL1176_artefacts/Release/Standalone/TEAL 1176     # standalone app
 ```
 
 On macOS an `AU` component can be added by appending `AU` to `FORMATS` in
@@ -48,7 +48,7 @@ On macOS an `AU` component can be added by appending `AU` to `FORMATS` in
 
 ```bash
 mkdir -p ~/.vst3
-cp -r "build/TEAL1178_artefacts/Release/VST3/TEAL 1178.vst3" ~/.vst3/
+cp -r "build/TEAL1176_artefacts/Release/VST3/TEAL 1176.vst3" ~/.vst3/
 ```
 
 (macOS: `~/Library/Audio/Plug-Ins/VST3/`, Windows: `C:\Program Files\Common Files\VST3\`.)
@@ -58,7 +58,7 @@ cp -r "build/TEAL1178_artefacts/Release/VST3/TEAL 1178.vst3" ~/.vst3/
 The DSP core is pure C++ (no JUCE) so it can be validated offline:
 
 ```bash
-cmake -B build -G Ninja -DTEAL1178_BUILD_TESTS=ON
+cmake -B build -G Ninja -DTEAL1176_BUILD_TESTS=ON
 cmake --build build --target dsp_offline_test plugin_host_test
 
 ./build/dsp_offline_test    # static curve, ratios, harmonic profile, LF grit
@@ -83,7 +83,7 @@ source/
     FETGainComputer.h      1176 feedback detector / gain computer
     CompressorEngine.h     full per-sample signal chain + ratio table
   gui/
-    LookAndFeel1178.h      knob / combo styling
+    LookAndFeel1176.h      knob / combo styling
     GainReductionMeter.h   VU-style GR needle
     RatioSelector.h        the 4 ratio buttons + "All" (British mode)
 tests/

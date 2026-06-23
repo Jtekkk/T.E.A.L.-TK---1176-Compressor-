@@ -3,7 +3,7 @@ T.E.A.L.  TK - 1176 Compressor
 
 ---
 
-## 🎛️ The plugin: TEAL 1178
+## 🎛️ The plugin: TEAL 1176
 
 A working **VST3 / Standalone** FET feedback compressor–limiter that implements the
 model researched in this document. Built with JUCE + CMake.

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "LookAndFeel1178.h"
+#include "LookAndFeel1176.h"
 
 // =============================================================================
 //  GainReductionMeter  --  VU-style needle showing gain reduction (0 .. -20 dB).

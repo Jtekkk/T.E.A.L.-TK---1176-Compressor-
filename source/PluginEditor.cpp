@@ -2,7 +2,7 @@
 
 using namespace juce;
 
-TEAL1178AudioProcessorEditor::TEAL1178AudioProcessorEditor (TEAL1178AudioProcessor& p)
+TEAL1176AudioProcessorEditor::TEAL1176AudioProcessorEditor (TEAL1176AudioProcessor& p)
     : AudioProcessorEditor (&p),
       proc (p),
       ratioSelector (p.apvts, pid::ratio)
@@ -50,12 +50,12 @@ TEAL1178AudioProcessorEditor::TEAL1178AudioProcessorEditor (TEAL1178AudioProcess
     startTimerHz (30);
 }
 
-TEAL1178AudioProcessorEditor::~TEAL1178AudioProcessorEditor()
+TEAL1176AudioProcessorEditor::~TEAL1176AudioProcessorEditor()
 {
     setLookAndFeel (nullptr);
 }
 
-void TEAL1178AudioProcessorEditor::setupKnob (Knob& k, const String& name)
+void TEAL1176AudioProcessorEditor::setupKnob (Knob& k, const String& name)
 {
     k.slider.setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
     k.slider.setTextBoxStyle (Slider::TextBoxBelow, false, 76, 20);
@@ -69,7 +69,7 @@ void TEAL1178AudioProcessorEditor::setupKnob (Knob& k, const String& name)
     addAndMakeVisible (k.label);
 }
 
-void TEAL1178AudioProcessorEditor::paint (Graphics& g)
+void TEAL1176AudioProcessorEditor::paint (Graphics& g)
 {
     g.fillAll (teal::Palette::background());
 
@@ -84,7 +84,7 @@ void TEAL1178AudioProcessorEditor::paint (Graphics& g)
     auto t = title.reduced (18, 0);
     g.setColour (teal::Palette::text());
     g.setFont (Font (FontOptions (27.0f, Font::bold)));
-    g.drawText ("T.E.A.L.  1178", t.removeFromLeft (300), Justification::centredLeft);
+    g.drawText ("T.E.A.L.  1176", t.removeFromLeft (300), Justification::centredLeft);
 
     g.setColour (teal::Palette::accent());
     g.setFont (Font (FontOptions (12.0f, Font::bold)));
@@ -108,7 +108,7 @@ void TEAL1178AudioProcessorEditor::paint (Graphics& g)
     drawPanel (content.reduced (10, 0));
 }
 
-void TEAL1178AudioProcessorEditor::resized()
+void TEAL1176AudioProcessorEditor::resized()
 {
     auto placeKnob = [] (Knob& k, Rectangle<int> area)
     {
@@ -151,7 +151,7 @@ void TEAL1178AudioProcessorEditor::resized()
     ratioSelector.setBounds (ratioArea.removeFromTop (40));
 }
 
-void TEAL1178AudioProcessorEditor::timerCallback()
+void TEAL1176AudioProcessorEditor::timerCallback()
 {
     meter.setGainReductionDb (proc.gainReductionDb.load());
     ratioSelector.refresh();

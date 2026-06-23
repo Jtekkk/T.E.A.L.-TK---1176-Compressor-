@@ -8,7 +8,7 @@
 #include "dsp/CompressorEngine.h"
 
 // =============================================================================
-//  TEAL 1178 -- FET feedback compressor / limiter (1176 model)
+//  TEAL 1176 -- FET feedback compressor / limiter (1176 model)
 //
 //  Architecture (see source/dsp and the README "one-page build recipe"):
 //    base rate : capture dry, apply smoothed input drive
@@ -20,11 +20,11 @@
 //  Oversampling uses min-phase polyphase-IIR halfband filters for ~zero latency.
 // =============================================================================
 
-class TEAL1178AudioProcessor : public juce::AudioProcessor
+class TEAL1176AudioProcessor : public juce::AudioProcessor
 {
 public:
-    TEAL1178AudioProcessor();
-    ~TEAL1178AudioProcessor() override = default;
+    TEAL1176AudioProcessor();
+    ~TEAL1176AudioProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -80,5 +80,5 @@ private:
     std::atomic<float>* pOs      { nullptr };
     std::atomic<float>* pBypass  { nullptr };
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TEAL1178AudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TEAL1176AudioProcessor)
 };

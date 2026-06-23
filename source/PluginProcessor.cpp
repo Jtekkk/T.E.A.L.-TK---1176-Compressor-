@@ -6,7 +6,7 @@
 using APVTS = juce::AudioProcessorValueTreeState;
 
 //==============================================================================
-APVTS::ParameterLayout TEAL1178AudioProcessor::createParameterLayout()
+APVTS::ParameterLayout TEAL1176AudioProcessor::createParameterLayout()
 {
     using namespace juce;
     APVTS::ParameterLayout layout;
@@ -56,7 +56,7 @@ APVTS::ParameterLayout TEAL1178AudioProcessor::createParameterLayout()
 }
 
 //==============================================================================
-TEAL1178AudioProcessor::TEAL1178AudioProcessor()
+TEAL1176AudioProcessor::TEAL1176AudioProcessor()
     : AudioProcessor (BusesProperties()
           .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
@@ -73,7 +73,7 @@ TEAL1178AudioProcessor::TEAL1178AudioProcessor()
 }
 
 //==============================================================================
-bool TEAL1178AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool TEAL1176AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto in  = layouts.getMainInputChannelSet();
     const auto out = layouts.getMainOutputChannelSet();
@@ -86,7 +86,7 @@ bool TEAL1178AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 }
 
 //==============================================================================
-void TEAL1178AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void TEAL1176AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     baseSampleRate = sampleRate;
 
@@ -124,7 +124,7 @@ void TEAL1178AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 }
 
 //==============================================================================
-void TEAL1178AudioProcessor::processEngine (juce::dsp::AudioBlock<float>& block)
+void TEAL1176AudioProcessor::processEngine (juce::dsp::AudioBlock<float>& block)
 {
     const int n  = (int) block.getNumSamples();
     const int ch = juce::jmin ((int) block.getNumChannels(), 2);
@@ -150,7 +150,7 @@ void TEAL1178AudioProcessor::processEngine (juce::dsp::AudioBlock<float>& block)
 }
 
 //==============================================================================
-void TEAL1178AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+void TEAL1176AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                            juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -245,12 +245,12 @@ void TEAL1178AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 }
 
 //==============================================================================
-juce::AudioProcessorEditor* TEAL1178AudioProcessor::createEditor()
+juce::AudioProcessorEditor* TEAL1176AudioProcessor::createEditor()
 {
-    return new TEAL1178AudioProcessorEditor (*this);
+    return new TEAL1176AudioProcessorEditor (*this);
 }
 
-void TEAL1178AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void TEAL1176AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     if (auto state = apvts.copyState(); state.isValid())
     {
@@ -259,7 +259,7 @@ void TEAL1178AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     }
 }
 
-void TEAL1178AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void TEAL1176AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xml (getXmlFromBinary (data, sizeInBytes));
     if (xml != nullptr && xml->hasTagName (apvts.state.getType()))
@@ -270,5 +270,5 @@ void TEAL1178AudioProcessor::setStateInformation (const void* data, int sizeInBy
 // This creates new instances of the plugin.
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new TEAL1178AudioProcessor();
+    return new TEAL1176AudioProcessor();
 }

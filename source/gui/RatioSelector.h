@@ -2,7 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "LookAndFeel1178.h"
+#include "LookAndFeel1176.h"
 
 // =============================================================================
 //  RatioSelector  --  the 1176's mutually-exclusive ratio push-buttons, plus

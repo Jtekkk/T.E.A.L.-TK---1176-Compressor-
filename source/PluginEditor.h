@@ -4,16 +4,16 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "PluginProcessor.h"
-#include "gui/LookAndFeel1178.h"
+#include "gui/LookAndFeel1176.h"
 #include "gui/GainReductionMeter.h"
 #include "gui/RatioSelector.h"
 
-class TEAL1178AudioProcessorEditor : public juce::AudioProcessorEditor,
+class TEAL1176AudioProcessorEditor : public juce::AudioProcessorEditor,
                                      private juce::Timer
 {
 public:
-    explicit TEAL1178AudioProcessorEditor (TEAL1178AudioProcessor&);
-    ~TEAL1178AudioProcessorEditor() override;
+    explicit TEAL1176AudioProcessorEditor (TEAL1176AudioProcessor&);
+    ~TEAL1176AudioProcessorEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -34,8 +34,8 @@ private:
 
     void setupKnob (Knob& k, const juce::String& name);
 
-    TEAL1178AudioProcessor& proc;
-    teal::LookAndFeel1178   lnf;
+    TEAL1176AudioProcessor& proc;
+    teal::LookAndFeel1176   lnf;
 
     Knob inputKnob, outputKnob, attackKnob, releaseKnob, mixKnob;
     std::unique_ptr<SliderAtt> inputAtt, outputAtt, attackAtt, releaseAtt, mixAtt;
@@ -52,5 +52,5 @@ private:
 
     teal::GainReductionMeter  meter;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TEAL1178AudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TEAL1176AudioProcessorEditor)
 };

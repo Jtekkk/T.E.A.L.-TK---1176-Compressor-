@@ -1,5 +1,5 @@
 // =============================================================================
-//  dsp_offline_test.cpp  --  offline validation of the 1178 DSP core.
+//  dsp_offline_test.cpp  --  offline validation of the 1176 DSP core.
 //
 //  No JUCE, no audio device: just drives the engine with sine tones and prints
 //  the static compression curve, gain reduction vs. input drive, and the
@@ -78,7 +78,7 @@ int main()
     eng.prepare (fs, 2);
     eng.setTimes (0.00025, 0.2);
 
-    std::printf ("TEAL 1178 -- offline DSP validation\n");
+    std::printf ("TEAL 1176 -- offline DSP validation\n");
     std::printf ("sample rate %.0f Hz, tone 1 kHz\n", fs);
 
     // --- 1) Static curve at 4:1, drive 0 dB --------------------------------

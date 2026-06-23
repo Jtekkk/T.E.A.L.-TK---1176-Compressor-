@@ -3,7 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 // =============================================================================
-//  LookAndFeel1178  --  blackface-1176-flavoured knobs and combo boxes.
+//  LookAndFeel1176  --  blackface-1176-flavoured knobs and combo boxes.
 // =============================================================================
 namespace teal
 {
@@ -21,10 +21,10 @@ struct Palette
     static juce::Colour knobEdge()   { return juce::Colour (0xff09090b); }
 };
 
-class LookAndFeel1178 : public juce::LookAndFeel_V4
+class LookAndFeel1176 : public juce::LookAndFeel_V4
 {
 public:
-    LookAndFeel1178()
+    LookAndFeel1176()
     {
         setColour (juce::Slider::textBoxTextColourId,       Palette::text());
         setColour (juce::Slider::textBoxOutlineColourId,    juce::Colours::transparentBlack);
