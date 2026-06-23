@@ -29,6 +29,7 @@
 #include "ADAAShaper.h"
 #include "FETGainComputer.h"
 #include "Filters.h"
+#include "Transformer.h"
 
 namespace teal
 {
@@ -41,15 +42,19 @@ struct CompressorEngine
     static constexpr int kMaxCh = 2;
 
     FETGainComputer gr      [kMaxCh];   // one per channel (used when unlinked)
-    BiasedTanh      inIron  [kMaxCh];
-    BiasedTanh      fet     [kMaxCh];
-    BiasedTanh      outIron [kMaxCh];
+    Transformer     inIron  [kMaxCh];   // input transformer (Jiles-Atherton)
+    BiasedTanh      fet     [kMaxCh];   // FET even-harmonic core
+    Transformer     outIron [kMaxCh];   // output transformer (the main "iron")
     DCBlocker       dcb     [kMaxCh];
     SvfHP           scHpf   [kMaxCh];
     double          prevDet [kMaxCh] { 0.0, 0.0 };
     int             numCh   { 2 };
     bool            linked  { true };
     double          scHpfHz { 20.0 };
+    double          lastFs  { 0.0 };    // guards rate-dependent recompute
+    double          baseAtt { 0.00025 };
+    double          baseRel { 0.4 };
+    bool            allMode { false };
 
     // -------------------------------------------------------------------------
     void prepare (double fs, int channels) noexcept
@@ -58,23 +63,28 @@ struct CompressorEngine
         for (int c = 0; c < kMaxCh; ++c)
         {
             gr[c].prepare (fs);
-            inIron [c].set (0.60, 0.22);   inIron [c].reset();
-            fet    [c].set (0.85, 0.40);   fet    [c].reset();
-            outIron[c].set (0.70, 0.26);   outIron[c].reset();
+            inIron [c].drive = 0.5;  inIron [c].setSampleRate (fs); inIron [c].reset();
+            fet    [c].set (0.85, 0.40);                            fet    [c].reset();
+            outIron[c].drive = 1.3;  outIron[c].setSampleRate (fs); outIron[c].reset();
             dcb    [c].prepare (fs);
             scHpf  [c].setSampleRate (fs); scHpf[c].setCutoff (scHpfHz); scHpf[c].reset();
             prevDet[c] = 0.0;
         }
+        lastFs = fs;
         setRatioMode (Ratio::R4);
     }
 
     void setSampleRate (double fs) noexcept
     {
+        if (fs == lastFs) return;       // rate unchanged -> skip (avoids re-calibration)
+        lastFs = fs;
         for (int c = 0; c < kMaxCh; ++c)
         {
             gr[c].setSampleRate (fs);
             dcb[c].setSampleRate (fs);
             scHpf[c].setSampleRate (fs);
+            inIron[c].setSampleRate (fs);
+            outIron[c].setSampleRate (fs);
         }
     }
 
@@ -94,7 +104,19 @@ struct CompressorEngine
 
     void setTimes (double attSec, double relSec) noexcept
     {
-        for (int c = 0; c < kMaxCh; ++c) gr[c].setTimes (attSec, relSec);
+        baseAtt = attSec;
+        baseRel = relSec;
+        applyTimes();
+    }
+
+    // All-buttons mode shifts the circuit's bias points, which changes the
+    // effective ballistics: a slower attack "lag" and a faster, pumping release
+    // (README §6.2). Applied on top of the user's Attack/Release.
+    void applyTimes() noexcept
+    {
+        const double am = allMode ? 1.35 : 1.0;
+        const double rm = allMode ? 0.55 : 1.0;
+        for (int c = 0; c < kMaxCh; ++c) gr[c].setTimes (baseAtt * am, baseRel * rm);
     }
 
     void setLinked (bool shouldLink) noexcept { linked = shouldLink; }
@@ -113,21 +135,25 @@ struct CompressorEngine
 
     void setRatioMode (Ratio r) noexcept
     {
-        double k = 3.0, thr = -18.0, drive = 0.85, bias = 0.40;
+        // FET drive/bias: the transformer iron is symmetric (J-A), so the FET
+        // is the source of the 1176's even-harmonic "presence" -- bias it fairly
+        // hard. Higher ratios / all-buttons push it for more grit.
+        double k = 3.0, thr = -18.0, drive = 1.05, bias = 0.62;
         switch (r)
         {
-            case Ratio::R4:  k = 3.0;  thr = -18.0; drive = 0.85; bias = 0.40; break;
-            case Ratio::R8:  k = 7.0;  thr = -16.0; drive = 0.95; bias = 0.42; break;
-            case Ratio::R12: k = 12.0; thr = -14.0; drive = 1.05; bias = 0.44; break;
-            case Ratio::R20: k = 27.0; thr = -12.0; drive = 1.20; bias = 0.46; break;
-            // All-buttons: more drive => grittier, more odd content + grind.
-            case Ratio::All: k = 17.0; thr = -15.0; drive = 1.80; bias = 0.40; break;
+            case Ratio::R4:  k = 3.0;  thr = -18.0; drive = 1.05; bias = 0.62; break;
+            case Ratio::R8:  k = 7.0;  thr = -16.0; drive = 1.15; bias = 0.64; break;
+            case Ratio::R12: k = 12.0; thr = -14.0; drive = 1.30; bias = 0.66; break;
+            case Ratio::R20: k = 27.0; thr = -12.0; drive = 1.45; bias = 0.68; break;
+            case Ratio::All: k = 17.0; thr = -15.0; drive = 2.10; bias = 0.60; break;
         }
         for (int c = 0; c < kMaxCh; ++c)
         {
             gr[c].setRatio (k, thr);
             fet[c].set (drive, bias);
         }
+        allMode = (r == Ratio::All);
+        applyTimes();
     }
 
     // Most negative (largest) reduction across channels, for metering.
