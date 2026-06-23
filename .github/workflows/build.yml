@@ -26,6 +26,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=0.0.0-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_ENV"
+          fi
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -53,7 +62,15 @@ jobs:
           ./build/dsp_offline_test
           xvfb-run -a ./build/plugin_host_test
 
-      - name: Upload artifacts
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "packaging\windows\installer.iss"
+
+      - name: Upload plugin artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TEAL1176-${{ matrix.name }}
@@ -62,6 +79,14 @@ jobs:
             build/TEAL1176_artefacts/Release/VST3/**
             build/TEAL1176_artefacts/Release/AU/**
             build/TEAL1176_artefacts/Release/Standalone/**
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TEAL1176-Windows-Installer
+          if-no-files-found: error
+          path: dist/*.exe
 
   release:
     needs: build
@@ -75,13 +100,23 @@ jobs:
         with:
           path: artifacts
 
-      - name: Zip per platform
+      - name: Package
         run: |
+          mkdir -p dist
           cd artifacts
-          for d in */; do zip -r "../${d%/}.zip" "$d"; done
+          for d in */; do
+            name="${d%/}"
+            case "$name" in
+              *Installer*) continue ;;        # the installer is attached directly
+            esac
+            zip -r "../dist/${name}.zip" "$name"
+          done
+          cd ..
+          find artifacts -name '*.exe' -exec cp {} dist/ \;
+          ls -l dist
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: "*.zip"
+          files: dist/*
           generate_release_notes: true

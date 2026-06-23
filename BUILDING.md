@@ -94,14 +94,25 @@ tests/
   plugin_host_test.cpp     headless AudioProcessor smoke test
   editor_snapshot.cpp      renders the editor to a PNG (run under xvfb-run)
 .github/workflows/build.yml  CI: macOS/Windows/Linux build + release on v* tags
+packaging/windows/installer.iss  Inno Setup script for the Windows installer
 ```
 
 ## Continuous integration & releases
 
 `.github/workflows/build.yml` builds the plugin on macOS, Windows and Linux for
 every push/PR, runs the test suite on Linux, and uploads the built VST3 / AU /
-Standalone as workflow artifacts. Pushing a tag like `v0.1.0` additionally zips
-each platform's build and publishes a GitHub Release. AU is built on macOS only.
+Standalone as workflow artifacts. The Windows job also builds an **Inno Setup
+installer** (`TEAL1176-Windows-Installer` artifact) that installs the VST3 into
+`C:\Program Files\Common Files\VST3` and the standalone into Program Files.
+Pushing a tag like `v0.1.0` zips each platform's build and publishes a GitHub
+Release with the Windows installer attached. AU is built on macOS only.
+
+To build the installer locally on Windows (after a Release build), install
+[Inno Setup](https://jrsoftware.org/isdl.php) and run:
+
+```bat
+ISCC.exe /DAppVersion=0.1.0 packaging\windows\installer.iss
+```
 
 ## How the model maps to the hardware
 
