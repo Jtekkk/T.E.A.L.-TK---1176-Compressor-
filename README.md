@@ -5,22 +5,29 @@ T.E.A.L.  TK - 1176 Compressor
 
 ## 🎛️ The plugin: TEAL 1176
 
-A working **VST3 / Standalone** FET feedback compressor–limiter that implements the
-model researched in this document. Built with JUCE + CMake.
+A working **VST3 / AU / Standalone** FET feedback compressor–limiter that implements
+the model researched in this document. Built with JUCE + CMake.
+
+![TEAL 1176 editor](docs/editor.png)
 
 - **Build it:** see **[BUILDING.md](BUILDING.md)** — `cmake -B build && cmake --build build`
 - **DSP core:** [`source/dsp/`](source/dsp) — pure C++ (no JUCE), unit-testable offline
 - **Plugin:** [`source/PluginProcessor.cpp`](source/PluginProcessor.cpp), [`source/PluginEditor.cpp`](source/PluginEditor.cpp)
+- **CI:** [`.github/workflows/build.yml`](.github/workflows/build.yml) builds macOS/Windows/Linux and publishes a release on `v*` tags
 
-Controls: **Input** (drive), **Output** (make-up), **Attack** (20–800 µs),
-**Release** (50 ms–1.1 s), **Ratio** (4 / 8 / 12 / 20 / All-buttons), **Mix**,
-**Oversampling** (1×–8×), Bypass — with a VU-style gain-reduction meter.
+**Controls:** Input (drive), Output (make-up), Attack (20–800 µs), Release
+(50 ms–1.1 s), Ratio (4 / 8 / 12 / 20 / All-buttons), Mix, sidechain high-pass,
+stereo-link, external sidechain, Oversampling (1×–8×, low-latency IIR or
+linear-phase FIR), soft Bypass — with a VU gain-reduction meter, input/output
+level meters and 8 factory presets.
 
-What it captures from the hardware: feedback detection (ratio `R = 1+k`, soft knee,
-program-dependent ratio creep), the even-harmonic FET/transformer colour, the
-all-buttons "British mode" grind, retained rectifier ripple for low-frequency grit,
-ADAA + oversampling antialiasing, and zero added latency (feedback ⇒ no lookahead).
-The rest of this README is the research and DSP derivations that back it.
+**What it captures from the hardware:** feedback detection (ratio `R = 1+k`, soft
+knee, program-dependent ratio creep); the even-harmonic FET colour; **Jiles-Atherton
+transformer iron** with flux integration, so low frequencies saturate first; the
+all-buttons "British mode" grind with shifted ballistics; retained rectifier ripple
+for low-frequency grit; ADAA + oversampling antialiasing; and zero added latency
+(feedback ⇒ no lookahead). The rest of this README is the research and DSP
+derivations that back it.
 
 ---
 

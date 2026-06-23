@@ -25,11 +25,16 @@ FetchContent_MakeAvailable(JUCE)
 # ---------------------------------------------------------------------------
 # The plugin target
 # ---------------------------------------------------------------------------
+set(TEAL1176_FORMATS VST3 Standalone)
+if(APPLE)
+    list(APPEND TEAL1176_FORMATS AU)
+endif()
+
 juce_add_plugin(TEAL1176
     COMPANY_NAME              "T.E.A.L."
     PLUGIN_MANUFACTURER_CODE  Teal
     PLUGIN_CODE               T176
-    FORMATS                   VST3 Standalone
+    FORMATS                   ${TEAL1176_FORMATS}
     PRODUCT_NAME              "TEAL 1176"
     DESCRIPTION               "FET feedback compressor / limiter modelled on the 1176"
     IS_SYNTH                  FALSE

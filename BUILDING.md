@@ -81,15 +81,27 @@ source/
   dsp/                     pure-C++ DSP core (unit-testable, no JUCE)
     ADAAShaper.h           antiderivative-antialiased biased-tanh + DC blocker
     FETGainComputer.h      1176 feedback detector / gain computer
+    Filters.h              TPT sidechain high-pass
+    Transformer.h          Jiles-Atherton transformer (flux-integration) iron
     CompressorEngine.h     full per-sample signal chain + ratio table
   gui/
     LookAndFeel1176.h      knob / combo styling
     GainReductionMeter.h   VU-style GR needle
+    LevelMeter.h           input/output peak meters
     RatioSelector.h        the 4 ratio buttons + "All" (British mode)
 tests/
   dsp_offline_test.cpp     offline DSP validation (no JUCE)
   plugin_host_test.cpp     headless AudioProcessor smoke test
+  editor_snapshot.cpp      renders the editor to a PNG (run under xvfb-run)
+.github/workflows/build.yml  CI: macOS/Windows/Linux build + release on v* tags
 ```
+
+## Continuous integration & releases
+
+`.github/workflows/build.yml` builds the plugin on macOS, Windows and Linux for
+every push/PR, runs the test suite on Linux, and uploads the built VST3 / AU /
+Standalone as workflow artifacts. Pushing a tag like `v0.1.0` additionally zips
+each platform's build and publishes a GitHub Release. AU is built on macOS only.
 
 ## How the model maps to the hardware
 
