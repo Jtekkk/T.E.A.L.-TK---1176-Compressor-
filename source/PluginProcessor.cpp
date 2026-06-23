@@ -327,6 +327,7 @@ void TEAL1176AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     gainReductionDb.store (bypassed ? 0.0f : lastBlockGr);
 
     // --- make-up + dry/wet mix + soft bypass -------------------------------
+    float inPeak = 0.0f, outPeak = 0.0f;
     for (int i = 0; i < n; ++i)
     {
         const float mk = outputGain.getNextValue();
@@ -337,9 +338,16 @@ void TEAL1176AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             const float dry  = dryBuffer.getReadPointer (c)[i];
             const float wet  = buffer.getReadPointer (c)[i] * mk;
             const float comp = mx * wet + (1.0f - mx) * dry;
-            buffer.getWritePointer (c)[i] = bp * comp + (1.0f - bp) * dry;
+            const float out  = bp * comp + (1.0f - bp) * dry;
+            buffer.getWritePointer (c)[i] = out;
+
+            inPeak  = juce::jmax (inPeak,  std::abs (dry));
+            outPeak = juce::jmax (outPeak, std::abs (out));
         }
     }
+
+    inputLevelDb .store (juce::Decibels::gainToDecibels (inPeak));
+    outputLevelDb.store (juce::Decibels::gainToDecibels (outPeak));
 }
 
 //==============================================================================

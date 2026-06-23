@@ -50,8 +50,10 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    // Current gain reduction (<= 0 dB) for the editor's meter.
+    // Metering for the editor (read on the UI timer).
     std::atomic<float> gainReductionDb { 0.0f };
+    std::atomic<float> inputLevelDb  { -100.0f };
+    std::atomic<float> outputLevelDb { -100.0f };
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
