@@ -1,7 +1,28 @@
 # T.E.A.L.-TK---1176-Compressor-
 T.E.A.L.  TK - 1176 Compressor  
 
+---
 
+## 🎛️ The plugin: TEAL 1178
+
+A working **VST3 / Standalone** FET feedback compressor–limiter that implements the
+model researched in this document. Built with JUCE + CMake.
+
+- **Build it:** see **[BUILDING.md](BUILDING.md)** — `cmake -B build && cmake --build build`
+- **DSP core:** [`source/dsp/`](source/dsp) — pure C++ (no JUCE), unit-testable offline
+- **Plugin:** [`source/PluginProcessor.cpp`](source/PluginProcessor.cpp), [`source/PluginEditor.cpp`](source/PluginEditor.cpp)
+
+Controls: **Input** (drive), **Output** (make-up), **Attack** (20–800 µs),
+**Release** (50 ms–1.1 s), **Ratio** (4 / 8 / 12 / 20 / All-buttons), **Mix**,
+**Oversampling** (1×–8×), Bypass — with a VU-style gain-reduction meter.
+
+What it captures from the hardware: feedback detection (ratio `R = 1+k`, soft knee,
+program-dependent ratio creep), the even-harmonic FET/transformer colour, the
+all-buttons "British mode" grind, retained rectifier ripple for low-frequency grit,
+ADAA + oversampling antialiasing, and zero added latency (feedback ⇒ no lookahead).
+The rest of this README is the research and DSP derivations that back it.
+
+---
 
 Deep Research on the 1176 Compressor
 The Universal Audio 1176 Limiting Amplifier is one of the most influential compressors in music production history, known for its fast attack time (20 µs), FET-based circuitry, and distinctive sonic character blog.insideblackbird.com+1.
