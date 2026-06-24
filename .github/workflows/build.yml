@@ -35,11 +35,15 @@ jobs:
         shell: bash
         env:
           INPUT_TAG: ${{ github.event.inputs.release_tag }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
         run: |
+          TAG=""
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF_NAME}"
-          else
-            TAG="${INPUT_TAG}"
+          elif [[ -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"
+          elif printf '%s' "$HEAD_MSG" | grep -q '\[release\]' && [[ -f RELEASE_VERSION ]]; then
+            TAG="$(tr -d '[:space:]' < RELEASE_VERSION)"
           fi
           if [[ "$TAG" == v* ]]; then
             echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
@@ -102,11 +106,31 @@ jobs:
 
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: meta
+        shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [[ -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="$(tr -d '[:space:]' < RELEASE_VERSION)"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -130,8 +154,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: TEAL 1176 ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+          name: TEAL 1176 ${{ steps.meta.outputs.tag }}
           files: dist/*
           generate_release_notes: true
