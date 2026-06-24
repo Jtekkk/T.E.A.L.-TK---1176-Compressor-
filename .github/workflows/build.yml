@@ -148,7 +148,9 @@ jobs:
             zip -r "../dist/${name}.zip" "$name"
           done
           cd ..
-          find artifacts -name '*.exe' -exec cp {} dist/ \;
+          # Attach only the installer as a loose file (the standalone .exe stays
+          # inside TEAL1176-Windows.zip).
+          find artifacts -path '*Installer*' -name '*.exe' -exec cp {} dist/ \;
           ls -l dist
 
       - name: Publish release
